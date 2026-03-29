@@ -39,4 +39,16 @@ export class UserService {
 
     return this.users[id];
   }
+
+  deleteUser(id: number) {
+    const user = this.users[id];
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    this.users.splice(id, 1);
+
+    return { message: 'deleted' };
+  }
 }
