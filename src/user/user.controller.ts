@@ -5,30 +5,30 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 export class UserController {
-  constructor(private userServices: UserService) {}
+  constructor(private userService: UserService) {}
 
   @Get()
   getUsers() {
-    return this.userServices.getUsers();
+    return this.userService.getUsers();
   }
 
   @Get(':id')
   getUser(@Param('id', ParseIntPipe) id: number) {
-    return this.userServices.getUser(id);
+    return this.userService.getUser(id);
   }
 
   @Post()
   createUser(@Body() body: CreateUserDto) {
-    return this.userServices.createUser(body);
+    return this.userService.createUser(body);
   }
 
   @Patch(':id')
   updateUser(@Param('id', ParseIntPipe) id: number, @Body() body: UpdateUserDto) {
-    return this.userServices.updateUser(id, body);
+    return this.userService.updateUser(id, body);
   }
 
   @Delete(':id')
   deleteUser(@Param('id', ParseIntPipe) id: number) {
-    return this.userServices.deleteUser(id);
+    return this.userService.deleteUser(id);
   }
 }
