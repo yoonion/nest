@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Post } from './post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -35,29 +35,28 @@ export class PostService {
     return post;
   }
 
-  async createPost(dto: CreatePostDto) {
-    const user = await this.userRepository.findOneBy({
-      id: dto.userId,
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
+  async createPost(dto: CreatePostDto, userId: number) {
     const post = this.postRepository.create({
-      title: dto.title,
-      content: dto.content,
-      user,
+      ...dto,
+      user: { id: userId },
     });
 
     return this.postRepository.save(post);
   }
 
-  async updatePost(id: number, dto: UpdatePostDto) {
-    const post = await this.postRepository.findOneBy({id});
+  async updatePost(id: number, dto: UpdatePostDto, userId: number) {
+    const post = await this.postRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
 
     if (!post) {
       throw new NotFoundException('Post not found');
+    }
+
+    // 작성자 인지 체크
+    if (post.user.id !== userId) {
+      throw new ForbiddenException('You are not the owner');
     }
 
     Object.assign(post, dto);
@@ -65,12 +64,21 @@ export class PostService {
     return this.postRepository.save(post);
   }
 
-  async deletePost(id: number) {
-    const post = await this.postRepository.findOneBy({id});
+  async deletePost(id: number, userId: number) {
+    const post = await this.postRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
 
     if (!post) {
       throw new NotFoundException('Post not found');
     }
+
+    // 작성자 인지 체크
+    if (post.user.id !== userId) {
+      throw new ForbiddenException('You are not the owner');
+    }
+
     await this.postRepository.delete(post.id);
 
     return { message: 'deleted' };

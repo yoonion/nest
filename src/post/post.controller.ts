@@ -3,6 +3,7 @@ import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @Controller('posts')
 export class PostController {
@@ -20,20 +21,29 @@ export class PostController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  createPost(@Body() dto: CreatePostDto) {
-    return this.postService.createPost(dto);
+  createPost(
+    @Body() dto: CreatePostDto,
+    @CurrentUser() user,
+  ) {
+    return this.postService.createPost(dto, user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   updatePost(
     @Param('id') id: string,
-    @Body() dto: UpdatePostDto
+    @Body() dto: UpdatePostDto,
+    @CurrentUser() user,
   ) {
-    return this.postService.updatePost(Number(id), dto);
+    return this.postService.updatePost(Number(id), dto, user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  deletePost(@Param('id') id: string) {
-    return this.postService.deletePost(Number(id));
+  deletePost(
+    @Param('id') id: string,
+    @CurrentUser() user,
+  ) {
+    return this.postService.deletePost(Number(id), user.userId);
   }
 }

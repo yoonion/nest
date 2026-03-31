@@ -11,9 +11,4 @@ export class CreatePostDto {
   @IsNotEmpty()
   @Length(1, 255)
   content: string;
-
-  @IsInt()
-  @Type(() => Number)
-  @Min(1)
-  userId: number;
 }
