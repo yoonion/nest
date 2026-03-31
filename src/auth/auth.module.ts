@@ -9,7 +9,6 @@ import { JwtStrategy } from './jwt/jwt.strategy';
   imports: [
     JwtModule.register({
       secret: 'secretKey', // (추후 env 분리)
-      signOptions: { expiresIn: '1h' },
     }),
     UserModule,
   ],

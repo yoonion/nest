@@ -26,8 +26,39 @@ export class AuthService {
 
     const payload = { sub: user.id, email: user.email };
 
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '1h'
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: '7d'
+    });
+
+    // refresh token 저장
+    await this.userService.updateRefreshToken(user.id, refreshToken);
+
     return {
-      accessToken: this.jwtService.sign(payload),
+      accessToken,
+      refreshToken
     };
+  }
+
+  async refresh(refreshToken: string) {
+      const payload = this.jwtService.verify(refreshToken);
+
+      const user = await this.userService.getUser(payload.sub);
+
+      if (user.refreshToken !== refreshToken) {
+        throw new UnauthorizedException("Refresh token not found");
+      }
+
+      const newAccessToken = this.jwtService.sign(
+        { sub: user.id, email: user.email },
+        { expiresIn: '1h' },
+      );
+
+      return {
+        accessToken: newAccessToken,
+      };
   }
 }

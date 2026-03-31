@@ -29,7 +29,7 @@ export class UserService {
   }
 
   async getUser(id: number) {
-    const user = await this.userRepository.findOneBy({id});
+    const user = await this.userRepository.findOneBy({ id });
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -66,5 +66,17 @@ export class UserService {
     return this.userRepository.findOne({
       where: { email },
     });
+  }
+
+  async updateRefreshToken(userId: number, token: string) {
+    const user = await this.userRepository.findOneBy({ id: userId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.refreshToken = token;
+
+    await this.userRepository.save(user);
   }
 }
