@@ -1,5 +1,4 @@
-import { IsInt, IsNotEmpty, IsString, Length, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNotEmpty, IsString, Length } from 'class-validator';
 
 export class CreatePostDto {
   @IsString()

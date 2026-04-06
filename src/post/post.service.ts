@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Post } from './post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -26,7 +30,7 @@ export class PostService {
     const post = await this.postRepository.findOne({
       where: { id },
       relations: ['user'],
-    })
+    });
 
     if (!post) {
       throw new NotFoundException('Post not found');
