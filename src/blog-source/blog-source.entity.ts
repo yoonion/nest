@@ -22,6 +22,9 @@ export class BlogSource {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  iconUrl: string | null;
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   rssUrl: string | null;
 

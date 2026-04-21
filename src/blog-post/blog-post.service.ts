@@ -84,6 +84,7 @@ export class BlogPostService {
         id: post.source.id,
         name: post.source.name,
         url: post.source.url,
+        iconUrl: post.source.iconUrl,
       },
     }));
   }

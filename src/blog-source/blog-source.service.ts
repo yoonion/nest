@@ -47,6 +47,7 @@ export class BlogSourceService {
       name: normalizedName,
       url: normalizedUrl,
       isActive: true,
+      iconUrl: null,
       rssUrl: null,
     });
 
@@ -79,6 +80,7 @@ export class BlogSourceService {
     id: number,
     collectedAt: Date,
     rssUrl: string | null,
+    iconUrl: string | null,
   ) {
     const blogSource = await this.blogSourceRepository.findOneBy({ id });
 
@@ -89,6 +91,9 @@ export class BlogSourceService {
     blogSource.lastCollectedAt = collectedAt;
     if (rssUrl) {
       blogSource.rssUrl = rssUrl;
+    }
+    if (iconUrl) {
+      blogSource.iconUrl = iconUrl;
     }
 
     return this.blogSourceRepository.save(blogSource);

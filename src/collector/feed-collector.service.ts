@@ -86,6 +86,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
   private async collectSource(source: BlogSource) {
     try {
       const discoveredFeedUrl = await this.discoverFeedUrl(source.url);
+      const discoveredIconUrl = await this.discoverIconUrl(source.url);
 
       if (discoveredFeedUrl) {
         this.logger.log(
@@ -114,6 +115,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
         source.id,
         new Date(),
         discoveredFeedUrl,
+        discoveredIconUrl,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -237,6 +239,84 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
     }
 
     return links;
+  }
+
+  private async discoverIconUrl(sourceUrl: string): Promise<string | null> {
+    try {
+      const response = await fetch(sourceUrl, {
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('text/html')) {
+          const html = await response.text();
+          const iconLinks = this.extractIconLinksFromHtml(html, sourceUrl);
+          for (const iconUrl of iconLinks) {
+            if (await this.isReachableUrl(iconUrl)) {
+              return iconUrl;
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore and fallback
+    }
+
+    try {
+      const fallback = new URL('/favicon.ico', sourceUrl).toString();
+      if (await this.isReachableUrl(fallback)) {
+        return fallback;
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  }
+
+  private extractIconLinksFromHtml(html: string, baseUrl: string): string[] {
+    const links: string[] = [];
+    const linkTagRegex = /<link\s+[^>]*>/gi;
+    const tags = html.match(linkTagRegex) ?? [];
+
+    for (const tag of tags) {
+      const relMatch = tag.match(/rel=["']([^"']+)["']/i);
+      const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
+
+      if (!relMatch || !hrefMatch) {
+        continue;
+      }
+
+      const rel = relMatch[1].toLowerCase();
+      const isIconRel =
+        rel.includes('icon') ||
+        rel.includes('apple-touch-icon') ||
+        rel.includes('shortcut icon');
+
+      if (!isIconRel) {
+        continue;
+      }
+
+      try {
+        links.push(new URL(hrefMatch[1], baseUrl).toString());
+      } catch {
+        continue;
+      }
+    }
+
+    return links;
+  }
+
+  private async isReachableUrl(url: string): Promise<boolean> {
+    try {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(8000),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 
   private async fetchFeedXml(feedUrl: string): Promise<string | null> {
