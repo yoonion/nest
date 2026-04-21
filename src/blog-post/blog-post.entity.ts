@@ -33,8 +33,8 @@ export class BlogPost {
   @Column({ type: 'datetime', nullable: true })
   publishedAt: Date | null;
 
-  @Column({ type: 'datetime' })
-  collectedAt: Date;
+  @Column({ type: 'datetime', nullable: true })
+  collectedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;
