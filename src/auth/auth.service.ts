@@ -47,6 +47,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       name: user.name,
+      role: user.role,
     };
   }
 
