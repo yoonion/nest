@@ -23,6 +23,15 @@ export class BlogSourceService {
     });
   }
 
+  getActiveBlogSources() {
+    return this.blogSourceRepository.find({
+      where: { isActive: true },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
   async createBlogSource(dto: CreateBlogSourceDto) {
     const normalizedUrl = dto.url.trim();
     const existing = await this.blogSourceRepository.findOne({
@@ -36,6 +45,7 @@ export class BlogSourceService {
     const blogSource = this.blogSourceRepository.create({
       url: normalizedUrl,
       isActive: true,
+      rssUrl: null,
     });
 
     return this.blogSourceRepository.save(blogSource);
@@ -49,6 +59,36 @@ export class BlogSourceService {
     }
 
     blogSource.isActive = isActive;
+    return this.blogSourceRepository.save(blogSource);
+  }
+
+  async updateLastCollectedAt(id: number, collectedAt: Date) {
+    const blogSource = await this.blogSourceRepository.findOneBy({ id });
+
+    if (!blogSource) {
+      throw new NotFoundException('Blog source not found');
+    }
+
+    blogSource.lastCollectedAt = collectedAt;
+    return this.blogSourceRepository.save(blogSource);
+  }
+
+  async updateCollectionMetadata(
+    id: number,
+    collectedAt: Date,
+    rssUrl: string | null,
+  ) {
+    const blogSource = await this.blogSourceRepository.findOneBy({ id });
+
+    if (!blogSource) {
+      throw new NotFoundException('Blog source not found');
+    }
+
+    blogSource.lastCollectedAt = collectedAt;
+    if (rssUrl) {
+      blogSource.rssUrl = rssUrl;
+    }
+
     return this.blogSourceRepository.save(blogSource);
   }
 }

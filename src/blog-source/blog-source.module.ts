@@ -9,5 +9,6 @@ import { RolesGuard } from '../auth/roles.guard';
   imports: [TypeOrmModule.forFeature([BlogSource])],
   controllers: [BlogSourceController],
   providers: [BlogSourceService, RolesGuard],
+  exports: [BlogSourceService],
 })
 export class BlogSourceModule {}

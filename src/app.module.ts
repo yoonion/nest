@@ -7,6 +7,7 @@ import { PostModule } from './post/post.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BlogSourceModule } from './blog-source/blog-source.module';
+import { CollectorModule } from './collector/collector.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { BlogSourceModule } from './blog-source/blog-source.module';
     PostModule,
     AuthModule,
     BlogSourceModule,
+    CollectorModule,
   ],
   controllers: [AppController],
   providers: [AppService],
