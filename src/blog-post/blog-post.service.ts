@@ -61,31 +61,41 @@ export class BlogPostService {
     }
   }
 
-  async getPublicFeed(limit = 50) {
-    const safeLimit = Math.max(1, Math.min(limit, 200));
+  async getPublicFeed(page = 1, limit = 20, sourceId?: number) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+    const where = sourceId ? { source: { id: sourceId } } : {};
 
-    const posts = await this.blogPostRepository.find({
+    const [posts, total] = await this.blogPostRepository.findAndCount({
+      where,
       relations: ['source'],
       order: {
         publishedAt: 'DESC',
         collectedAt: 'DESC',
       },
+      skip: (safePage - 1) * safeLimit,
       take: safeLimit,
     });
 
-    return posts.map((post) => ({
-      id: post.id,
-      title: post.title,
-      summary: post.summary,
-      url: post.url,
-      publishedAt: post.publishedAt,
-      collectedAt: post.collectedAt,
-      source: {
-        id: post.source.id,
-        name: post.source.name,
-        url: post.source.url,
-        iconUrl: post.source.iconUrl,
-      },
-    }));
+    return {
+      items: posts.map((post) => ({
+        id: post.id,
+        title: post.title,
+        summary: post.summary,
+        url: post.url,
+        publishedAt: post.publishedAt,
+        collectedAt: post.collectedAt,
+        source: {
+          id: post.source.id,
+          name: post.source.name,
+          url: post.source.url,
+          iconUrl: post.source.iconUrl,
+        },
+      })),
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+    };
   }
 }

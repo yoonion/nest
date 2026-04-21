@@ -12,6 +12,12 @@ import { BlogPostService, CollectedFeedItem } from '../blog-post/blog-post.servi
 @Injectable()
 export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FeedCollectorService.name);
+  private readonly defaultHeaders: Record<string, string> = {
+    'User-Agent':
+      'TechTrackerBot/1.0 (+https://techtracker.local; feed collector)',
+    Accept:
+      'application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.8',
+  };
   private timer: NodeJS.Timeout | null = null;
   private isRunning = false;
   private readonly intervalMs: number;
@@ -95,7 +101,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
 
         const feedXml = await this.fetchFeedXml(discoveredFeedUrl);
         if (feedXml) {
-          const items = this.parseFeedItems(feedXml);
+          const items = this.parseFeedItems(feedXml, discoveredFeedUrl);
           if (items.length > 0) {
             await this.blogPostService.upsertManyFromFeed(source, items);
             this.logger.log(
@@ -160,9 +166,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
     visited.add(url);
 
     try {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-      });
+      const response = await this.fetchWithRetry(url, 8000);
 
       if (!response.ok) {
         return null;
@@ -243,9 +247,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
 
   private async discoverIconUrl(sourceUrl: string): Promise<string | null> {
     try {
-      const response = await fetch(sourceUrl, {
-        signal: AbortSignal.timeout(8000),
-      });
+      const response = await this.fetchWithRetry(sourceUrl, 8000);
 
       if (response.ok) {
         const contentType = response.headers.get('content-type') ?? '';
@@ -310,9 +312,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
 
   private async isReachableUrl(url: string): Promise<boolean> {
     try {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-      });
+      const response = await this.fetchWithRetry(url, 8000);
       return response.ok;
     } catch {
       return false;
@@ -321,9 +321,7 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
 
   private async fetchFeedXml(feedUrl: string): Promise<string | null> {
     try {
-      const response = await fetch(feedUrl, {
-        signal: AbortSignal.timeout(10000),
-      });
+      const response = await this.fetchWithRetry(feedUrl, 10000);
 
       if (!response.ok) {
         return null;
@@ -345,24 +343,28 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private parseFeedItems(feedXml: string): CollectedFeedItem[] {
+  private parseFeedItems(
+    feedXml: string,
+    baseUrl: string,
+  ): CollectedFeedItem[] {
     const xml = feedXml.trim();
-    if (xml.includes('<item')) {
-      return this.parseRssItems(xml);
+    const lowerXml = xml.toLowerCase();
+    if (lowerXml.includes('<item')) {
+      return this.parseRssItems(xml, baseUrl);
     }
-    if (xml.includes('<entry')) {
-      return this.parseAtomEntries(xml);
+    if (lowerXml.includes('<entry')) {
+      return this.parseAtomEntries(xml, baseUrl);
     }
     return [];
   }
 
-  private parseRssItems(feedXml: string): CollectedFeedItem[] {
+  private parseRssItems(feedXml: string, baseUrl: string): CollectedFeedItem[] {
     const blocks = feedXml.match(/<item\b[\s\S]*?<\/item>/gi) ?? [];
     const items: CollectedFeedItem[] = [];
 
     for (const block of blocks) {
       const title = this.readTag(block, 'title');
-      const link = this.readTag(block, 'link');
+      const link = this.readTag(block, 'link') ?? this.readRssLinkFromTag(block);
       const guid = this.readTag(block, 'guid');
       const summary =
         this.readTag(block, 'description') ??
@@ -374,10 +376,11 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
       if (!title || !resolvedUrl) {
         continue;
       }
+      const absoluteUrl = this.toAbsoluteUrl(resolvedUrl, baseUrl);
 
       items.push({
-        externalId: guid ?? resolvedUrl,
-        url: resolvedUrl,
+        externalId: guid ?? absoluteUrl,
+        url: absoluteUrl,
         title: this.cleanText(title),
         summary: summary ? this.cleanText(summary) : null,
         publishedAt: this.parseDate(publishedRaw),
@@ -387,7 +390,10 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
     return items;
   }
 
-  private parseAtomEntries(feedXml: string): CollectedFeedItem[] {
+  private parseAtomEntries(
+    feedXml: string,
+    baseUrl: string,
+  ): CollectedFeedItem[] {
     const blocks = feedXml.match(/<entry\b[\s\S]*?<\/entry>/gi) ?? [];
     const items: CollectedFeedItem[] = [];
 
@@ -403,10 +409,11 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
       if (!title || !resolvedUrl) {
         continue;
       }
+      const absoluteUrl = this.toAbsoluteUrl(resolvedUrl, baseUrl);
 
       items.push({
-        externalId: id ?? resolvedUrl,
-        url: resolvedUrl,
+        externalId: id ?? absoluteUrl,
+        url: absoluteUrl,
         title: this.cleanText(title),
         summary: summary ? this.cleanText(summary) : null,
         publishedAt: this.parseDate(publishedRaw),
@@ -418,7 +425,12 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
 
   private readTag(xml: string, tagName: string): string | null {
     const escaped = tagName.replace(':', '\\:');
-    const regex = new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, 'i');
+    const hasPrefix = tagName.includes(':');
+    const namePattern = hasPrefix ? escaped : `(?:[\\w-]+:)?${escaped}`;
+    const regex = new RegExp(
+      `<${namePattern}[^>]*>([\\s\\S]*?)<\\/${namePattern}>`,
+      'i',
+    );
     const match = xml.match(regex);
     if (!match) {
       return null;
@@ -428,6 +440,8 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
 
   private readAtomLink(entryXml: string): string | null {
     const linkTags = entryXml.match(/<link\b[^>]*>/gi) ?? [];
+    const candidateByRel = new Map<string, string>();
+
     for (const tag of linkTags) {
       const relMatch = tag.match(/rel=["']([^"']+)["']/i);
       const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
@@ -435,11 +449,59 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
       const rel = relMatch?.[1]?.toLowerCase() ?? 'alternate';
-      if (rel === 'alternate' || rel === 'self') {
+      if (rel === 'alternate' || rel === 'self' || rel === 'related') {
+        candidateByRel.set(rel, hrefMatch[1]);
+      }
+    }
+
+    return (
+      candidateByRel.get('alternate') ??
+      candidateByRel.get('related') ??
+      candidateByRel.get('self') ??
+      null
+    );
+  }
+
+  private readRssLinkFromTag(itemXml: string): string | null {
+    const linkTags = itemXml.match(/<link\b[^>]*>/gi) ?? [];
+    for (const tag of linkTags) {
+      const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
+      if (hrefMatch) {
         return hrefMatch[1];
       }
     }
     return null;
+  }
+
+  private toAbsoluteUrl(url: string, baseUrl: string): string {
+    try {
+      return new URL(url, baseUrl).toString();
+    } catch {
+      return url;
+    }
+  }
+
+  private async fetchWithRetry(
+    url: string,
+    timeoutMs: number,
+    maxAttempts = 2,
+  ): Promise<Response> {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await fetch(url, {
+          signal: AbortSignal.timeout(timeoutMs),
+          headers: this.defaultHeaders,
+          redirect: 'follow',
+        });
+      } catch (error) {
+        lastError = error;
+        if (attempt === maxAttempts) {
+          break;
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('fetch failed');
   }
 
   private cleanText(value: string): string {

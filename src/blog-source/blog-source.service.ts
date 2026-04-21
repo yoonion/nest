@@ -15,12 +15,55 @@ export class BlogSourceService {
     private readonly blogSourceRepository: Repository<BlogSource>,
   ) {}
 
-  getBlogSources() {
-    return this.blogSourceRepository.find({
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+  async getBlogSources() {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const rows = await this.blogSourceRepository
+      .createQueryBuilder('source')
+      .leftJoin('source.posts', 'post')
+      .select('source.id', 'id')
+      .addSelect('source.name', 'name')
+      .addSelect('source.url', 'url')
+      .addSelect('source.isActive', 'isActive')
+      .addSelect('source.iconUrl', 'iconUrl')
+      .addSelect('source.rssUrl', 'rssUrl')
+      .addSelect('source.lastCollectedAt', 'lastCollectedAt')
+      .addSelect('source.createdAt', 'createdAt')
+      .addSelect('source.updatedAt', 'updatedAt')
+      .addSelect('COUNT(post.id)', 'postCount')
+      .addSelect(
+        'SUM(CASE WHEN post.publishedAt IS NOT NULL AND post.publishedAt >= :threeDaysAgo THEN 1 ELSE 0 END)',
+        'newPostCount',
+      )
+      .groupBy('source.id')
+      .orderBy('source.createdAt', 'DESC')
+      .setParameter('threeDaysAgo', threeDaysAgo)
+      .getRawMany<{
+        id: number;
+        name: string | null;
+        url: string;
+        isActive: boolean;
+        iconUrl: string | null;
+        rssUrl: string | null;
+        lastCollectedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+        postCount: string;
+        newPostCount: string;
+      }>();
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      isActive: row.isActive,
+      iconUrl: row.iconUrl,
+      rssUrl: row.rssUrl,
+      lastCollectedAt: row.lastCollectedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      postCount: Number(row.postCount) || 0,
+      newPostCount: Number(row.newPostCount) || 0,
+    }));
   }
 
   getActiveBlogSources() {
