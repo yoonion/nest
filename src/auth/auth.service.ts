@@ -30,7 +30,7 @@ export class AuthService {
       );
     }
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
 
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: '1h',
@@ -61,7 +61,7 @@ export class AuthService {
     }
 
     const newAccessToken = this.jwtService.sign(
-      { sub: user.id, email: user.email },
+      { sub: user.id, email: user.email, role: user.role },
       { expiresIn: '1h' },
     );
 
