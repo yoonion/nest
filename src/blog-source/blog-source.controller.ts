@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -52,5 +53,12 @@ export class BlogSourceController {
     @Body() dto: ToggleBlogSourceDto,
   ) {
     return this.blogSourceService.updateActiveStatus(id, dto.isActive);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  deleteBlogSource(@Param('id', ParseIntPipe) id: number) {
+    return this.blogSourceService.deleteBlogSource(id);
   }
 }

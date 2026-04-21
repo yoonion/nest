@@ -82,6 +82,7 @@ export class BlogPostService {
       collectedAt: post.collectedAt,
       source: {
         id: post.source.id,
+        name: post.source.name,
         url: post.source.url,
       },
     }));

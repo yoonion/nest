@@ -13,6 +13,9 @@ export class BlogSource {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  name: string | null;
+
   @Column({ unique: true, length: 500 })
   url: string;
 

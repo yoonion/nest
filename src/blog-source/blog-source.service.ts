@@ -33,6 +33,7 @@ export class BlogSourceService {
   }
 
   async createBlogSource(dto: CreateBlogSourceDto) {
+    const normalizedName = dto.name.trim();
     const normalizedUrl = dto.url.trim();
     const existing = await this.blogSourceRepository.findOne({
       where: { url: normalizedUrl },
@@ -43,6 +44,7 @@ export class BlogSourceService {
     }
 
     const blogSource = this.blogSourceRepository.create({
+      name: normalizedName,
       url: normalizedUrl,
       isActive: true,
       rssUrl: null,
@@ -90,5 +92,16 @@ export class BlogSourceService {
     }
 
     return this.blogSourceRepository.save(blogSource);
+  }
+
+  async deleteBlogSource(id: number) {
+    const blogSource = await this.blogSourceRepository.findOneBy({ id });
+
+    if (!blogSource) {
+      throw new NotFoundException('Blog source not found');
+    }
+
+    await this.blogSourceRepository.remove(blogSource);
+    return { message: 'deleted' };
   }
 }
