@@ -46,6 +46,12 @@ export class AuthController {
     return this.authService.getDiscordStatus(user.userId);
   }
 
+  @Post('discord/test-dm')
+  @UseGuards(JwtAuthGuard)
+  sendDiscordTestDm(@CurrentUser() user: AuthUser) {
+    return this.authService.sendDiscordTestDm(user.userId);
+  }
+
   @Get('discord/callback')
   async discordCallback(
     @Query('code') code: string,

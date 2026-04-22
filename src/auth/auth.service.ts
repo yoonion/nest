@@ -206,6 +206,74 @@ export class AuthService {
     return this.userService.getDiscordConnection(userId);
   }
 
+  async sendDiscordTestDm(userId: number) {
+    const botToken = this.configService.get<string>('DISCORD_BOT_TOKEN');
+    if (!botToken) {
+      throw new InternalServerErrorException(
+        'DISCORD_BOT_TOKEN 환경변수가 설정되지 않았습니다.',
+      );
+    }
+
+    const user = await this.userService.getUser(userId);
+    const discordUserId = user.discordUserId?.trim();
+    if (!discordUserId) {
+      throw new BadRequestException('Discord 연동 후 다시 시도해 주세요.');
+    }
+
+    const channelResponse = await fetch(
+      'https://discord.com/api/v10/users/@me/channels',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recipient_id: discordUserId }),
+      },
+    );
+
+    const channelResult = (await channelResponse.json()) as {
+      id?: string;
+      message?: string;
+    };
+
+    if (!channelResponse.ok || !channelResult.id) {
+      throw new BadRequestException(
+        channelResult.message ??
+          'DM 채널 생성에 실패했습니다. 봇과 같은 서버에 참여했는지 확인해 주세요.',
+      );
+    }
+
+    const messageResponse = await fetch(
+      `https://discord.com/api/v10/channels/${channelResult.id}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content:
+            '[TechTracker] 테스트 알림입니다. 이제 새 글 알림을 DM으로 받을 수 있습니다.',
+        }),
+      },
+    );
+
+    const messageResult = (await messageResponse.json()) as {
+      id?: string;
+      message?: string;
+    };
+
+    if (!messageResponse.ok || !messageResult.id) {
+      throw new BadRequestException(
+        messageResult.message ??
+          '테스트 DM 전송에 실패했습니다. Discord 설정을 확인해 주세요.',
+      );
+    }
+
+    return { sent: true, messageId: messageResult.id };
+  }
+
   getDiscordRedirectUrl(success: boolean, message?: string) {
     const frontendBaseUrl = this.configService.get<string>(
       'FRONTEND_BASE_URL',
