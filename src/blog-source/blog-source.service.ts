@@ -17,7 +17,7 @@ export class BlogSourceService {
   ) {}
 
   async getBlogSources() {
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const rows = await this.blogSourceRepository
       .createQueryBuilder('source')
       .leftJoin('source.posts', 'post')
@@ -32,12 +32,12 @@ export class BlogSourceService {
       .addSelect('source.updatedAt', 'updatedAt')
       .addSelect('COUNT(post.id)', 'postCount')
       .addSelect(
-        'SUM(CASE WHEN post.publishedAt IS NOT NULL AND post.publishedAt >= :threeDaysAgo THEN 1 ELSE 0 END)',
+        'SUM(CASE WHEN post.publishedAt IS NOT NULL AND post.publishedAt >= :sevenDaysAgo THEN 1 ELSE 0 END)',
         'newPostCount',
       )
       .groupBy('source.id')
       .orderBy('source.createdAt', 'DESC')
-      .setParameter('threeDaysAgo', threeDaysAgo)
+      .setParameter('sevenDaysAgo', sevenDaysAgo)
       .getRawMany<{
         id: number;
         name: string | null;
