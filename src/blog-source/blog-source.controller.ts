@@ -16,6 +16,8 @@ import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../user/user-role.enum';
 import { CreateBlogSourceDto } from './dto/create-blog-source.dto';
 import { ToggleBlogSourceDto } from './dto/toggle-blog-source.dto';
+import { UpdateBlogSourceIconDto } from './dto/update-blog-source-icon.dto';
+import { UpdateBlogSourceDto } from './dto/update-blog-source.dto';
 
 @Controller('blog-sources')
 export class BlogSourceController {
@@ -38,6 +40,13 @@ export class BlogSourceController {
     return this.blogSourceService.getBlogSources();
   }
 
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  getBlogSourceById(@Param('id', ParseIntPipe) id: number) {
+    return this.blogSourceService.getBlogSourceById(id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -53,6 +62,30 @@ export class BlogSourceController {
     @Body() dto: ToggleBlogSourceDto,
   ) {
     return this.blogSourceService.updateActiveStatus(id, dto.isActive);
+  }
+
+  @Patch(':id/icon')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  updateIconUrl(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateBlogSourceIconDto,
+  ) {
+    const nextIconUrl = dto.iconUrl?.trim();
+    return this.blogSourceService.updateIconUrl(
+      id,
+      nextIconUrl && nextIconUrl.length > 0 ? nextIconUrl : null,
+    );
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  updateBlogSource(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateBlogSourceDto,
+  ) {
+    return this.blogSourceService.updateBlogSource(id, dto);
   }
 
   @Delete(':id')

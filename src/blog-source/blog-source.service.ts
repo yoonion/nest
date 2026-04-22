@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BlogSource } from './blog-source.entity';
 import { CreateBlogSourceDto } from './dto/create-blog-source.dto';
+import { UpdateBlogSourceDto } from './dto/update-blog-source.dto';
 
 @Injectable()
 export class BlogSourceService {
@@ -97,6 +98,14 @@ export class BlogSourceService {
     return this.blogSourceRepository.save(blogSource);
   }
 
+  async getBlogSourceById(id: number) {
+    const source = await this.blogSourceRepository.findOneBy({ id });
+    if (!source) {
+      throw new NotFoundException('Blog source not found');
+    }
+    return source;
+  }
+
   async updateActiveStatus(id: number, isActive: boolean) {
     const blogSource = await this.blogSourceRepository.findOneBy({ id });
 
@@ -105,6 +114,55 @@ export class BlogSourceService {
     }
 
     blogSource.isActive = isActive;
+    return this.blogSourceRepository.save(blogSource);
+  }
+
+  async updateIconUrl(id: number, iconUrl: string | null) {
+    const blogSource = await this.blogSourceRepository.findOneBy({ id });
+
+    if (!blogSource) {
+      throw new NotFoundException('Blog source not found');
+    }
+
+    blogSource.iconUrl = iconUrl;
+    return this.blogSourceRepository.save(blogSource);
+  }
+
+  async updateBlogSource(id: number, dto: UpdateBlogSourceDto) {
+    const blogSource = await this.blogSourceRepository.findOneBy({ id });
+    if (!blogSource) {
+      throw new NotFoundException('Blog source not found');
+    }
+
+    if (typeof dto.name === 'string') {
+      const normalizedName = dto.name.trim();
+      if (normalizedName.length > 0) {
+        blogSource.name = normalizedName;
+      }
+    }
+
+    if (typeof dto.url === 'string') {
+      const normalizedUrl = dto.url.trim();
+      if (normalizedUrl.length > 0 && normalizedUrl !== blogSource.url) {
+        const existing = await this.blogSourceRepository.findOne({
+          where: { url: normalizedUrl },
+        });
+        if (existing && existing.id !== id) {
+          throw new ConflictException('이미 등록된 블로그 URL입니다.');
+        }
+        blogSource.url = normalizedUrl;
+      }
+    }
+
+    if (typeof dto.iconUrl === 'string') {
+      const normalizedIconUrl = dto.iconUrl.trim();
+      blogSource.iconUrl = normalizedIconUrl.length > 0 ? normalizedIconUrl : null;
+    }
+
+    if (typeof dto.isActive === 'boolean') {
+      blogSource.isActive = dto.isActive;
+    }
+
     return this.blogSourceRepository.save(blogSource);
   }
 
