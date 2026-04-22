@@ -131,11 +131,11 @@ export class FeedCollectorService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`No feed found for source ${source.id}: ${source.url}`);
       }
 
-      const discoveredIconUrl = await this.discoverIconUrl(
-        source.url,
-        discoveredFeedUrl,
-        feedXml,
-      );
+      const hasExistingIcon =
+        typeof source.iconUrl === 'string' && source.iconUrl.trim().length > 0;
+      const discoveredIconUrl = hasExistingIcon
+        ? null
+        : await this.discoverIconUrl(source.url, discoveredFeedUrl, feedXml);
 
       await this.blogSourceService.updateCollectionMetadata(
         source.id,

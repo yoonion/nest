@@ -193,7 +193,10 @@ export class BlogSourceService {
     if (rssUrl) {
       blogSource.rssUrl = rssUrl;
     }
-    if (iconUrl) {
+    if (
+      iconUrl &&
+      (!blogSource.iconUrl || blogSource.iconUrl.trim().length === 0)
+    ) {
       blogSource.iconUrl = iconUrl;
     }
 
